@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Google Places</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="contacts_title">Json Contacts</string>
+    <string name="places_title">Pizza Places in Belmont</string>
+    <string name="create_contact_button">Create Contact</string>
+    <string name="place_detail_label">Details</string>
+    
+</resources>
