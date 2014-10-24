@@ -3,6 +3,7 @@ package com.vmware.android.googleplaces;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -14,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+
 import com.vmware.android.googleplaces.R;
 
 public class PlaceDetailFragment extends Fragment {
@@ -38,8 +40,8 @@ public class PlaceDetailFragment extends Fragment {
 	@Override
 	public void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
-		String placeId = (String)getActivity().getIntent().getSerializableExtra(EXTRA_PLACE_ID);
-		//String placeId = (String)getArguments().getSerializable(EXTRA_PLACE_ID);
+		//String placeId = (String)getActivity().getIntent().getSerializableExtra(EXTRA_PLACE_ID);
+		String placeId = (String)getArguments().getSerializable(EXTRA_PLACE_ID);
 		Log.i(TAG, "place detail fragment loaded with place id" + placeId);
 		mPlaceDetail = PlaceDetailLab.get(getActivity()).getPlaceDetail(placeId);
 		setHasOptionsMenu(true);
@@ -82,7 +84,7 @@ public class PlaceDetailFragment extends Fragment {
 		}
 		
 		mNameTextView = (TextView) v.findViewById(R.id.place_detail_nameTextView);
-		mNameTextView.setText(mPlaceDetail.getPlaceName());
+		mNameTextView.setText(mPlaceDetail.getPlaceName() + ", " + mPlaceDetail.getRating() + " stars");
 		mAddressTextView = (TextView) v.findViewById(R.id.place_detail_formattedAddress_TextView);
 		mAddressTextView.setText(mPlaceDetail.getFormattedAddress());
 
@@ -90,7 +92,19 @@ public class PlaceDetailFragment extends Fragment {
 		mMapButton.setText("Map");
 		mWebSiteButton = (Button)v.findViewById(R.id.place_detail_webSite);		
 		mWebSiteButton.setText("WebSite");
-
+		if (mPlaceDetail.getWebSiteUrl().equals("")){
+			mWebSiteButton.setEnabled(false);
+		}
+		mWebSiteButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+        		Uri photoPageUri = Uri.parse(mPlaceDetail.getWebSiteUrl());
+        		// Use WebView w/in the app
+        		Intent i = new Intent(getActivity(), PlaceWebPageActivity.class);
+                i.setData(photoPageUri);
+        		startActivity(i);
+            }
+        });
+		
 /*
 		mDateButton = (Button)v.findViewById(R.id.crime_date);		
 		updateDate();

@@ -9,6 +9,7 @@ public class PlaceDetail {
     private static final String TAG_FORMATTED_ADDRESS ="formatted_address";
 	private static final String TAG_NAME = "name";
 	private static final String TAG_RATING = "rating";
+	private static final String TAG_WEBSITE = "website";
 	private static final String TAG_GEOMETRY = "geometry";
 	private static final String TAG_LOCATION = "location";
 	private static final String TAG_LAT = "lat";
@@ -33,7 +34,8 @@ public class PlaceDetail {
 		mPlaceId = placeDetail.getString(TAG_PLACE_ID);
 		mFormattedAddress = placeDetail.getString(TAG_FORMATTED_ADDRESS);
 		mPlaceName = placeDetail.getString(TAG_NAME);
-		
+		mRating = placeDetail.optDouble(TAG_RATING);
+		mWebSiteUrl = placeDetail.optString(TAG_WEBSITE);
     }
 
 	public String getPlaceName() {
@@ -66,6 +68,10 @@ public class PlaceDetail {
 
 	public double getLon() {
 		return mLon;
+	}
+
+	public double getRating() {
+		return mRating;
 	}
 
 	@Override

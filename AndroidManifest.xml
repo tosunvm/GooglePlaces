@@ -30,6 +30,11 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".GenericListActivity" />
         </activity>
+        <activity
+            android:name=".PlaceWebPageActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize" >
+		</activity>
+        
     </application>
 
 </manifest>
