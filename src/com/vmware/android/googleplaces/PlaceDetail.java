@@ -36,6 +36,14 @@ public class PlaceDetail {
 		mPlaceName = placeDetail.getString(TAG_NAME);
 		mRating = placeDetail.optDouble(TAG_RATING);
 		mWebSiteUrl = placeDetail.optString(TAG_WEBSITE);
+		
+		// Geometry node is JSON Object
+		JSONObject geometry = placeDetail.getJSONObject(TAG_GEOMETRY);
+		// Location node is JSON Object
+		JSONObject location = geometry.getJSONObject(TAG_LOCATION);
+		mLat = location.optDouble(TAG_LAT);
+		mLon = location.optDouble(TAG_LON);
+
     }
 
 	public String getPlaceName() {

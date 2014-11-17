@@ -90,6 +90,19 @@ public class PlaceDetailFragment extends Fragment {
 
 		mMapButton = (Button)v.findViewById(R.id.place_detail_map);
 		mMapButton.setText("Map");
+		if ((mPlaceDetail.getLat() == Double.NaN) || (mPlaceDetail.getLon() == Double.NaN)){
+			mMapButton.setEnabled(false);
+		}
+        mMapButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent i = new Intent(getActivity(), PlaceMapActivity.class);
+                i.putExtra(PlaceMapActivity.EXTRA_LAT, mPlaceDetail.getLat());
+                i.putExtra(PlaceMapActivity.EXTRA_LON, mPlaceDetail.getLon());
+                startActivity(i);
+            }
+        });
+		
 		mWebSiteButton = (Button)v.findViewById(R.id.place_detail_webSite);		
 		mWebSiteButton.setText("WebSite");
 		if (mPlaceDetail.getWebSiteUrl().equals("")){
