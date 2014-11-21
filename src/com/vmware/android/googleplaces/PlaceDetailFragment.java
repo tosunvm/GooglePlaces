@@ -45,6 +45,7 @@ public class PlaceDetailFragment extends Fragment {
 		Log.i(TAG, "place detail fragment loaded with place id" + placeId);
 		mPlaceDetail = PlaceDetailLab.get(getActivity()).getPlaceDetail(placeId);
 		setHasOptionsMenu(true);
+		//setRetainInstance(true);
 	}
 
 	@Override

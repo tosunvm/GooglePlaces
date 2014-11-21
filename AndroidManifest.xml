@@ -23,7 +23,11 @@
         android:theme="@style/AppTheme" >
         <activity
             android:name="com.vmware.android.googleplaces.GenericListActivity"
-            android:label="@string/app_name" >
+            android:label="@string/app_name" 
+            android:launchMode="singleTask" >
+            <!-- Above launchMode is there to avoid reload of the page from server when up ancestral navigation is hit from menu bar
+            http://stackoverflow.com/questions/12276027/how-can-i-return-to-a-parent-activity-correctly
+              -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

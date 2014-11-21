@@ -40,5 +40,8 @@ build/
 *.pyc
 *.pyo
 
-#findbugs
+# findbugs
 findbugs.html
+
+# lint
+lint.xml

@@ -51,12 +51,23 @@ public class PlaceListFragment extends ListFragment {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		//setHasOptionsMenu(true);
 		getActivity().setTitle(R.string.places_title);
-		contactList = new ArrayList<HashMap<String, String>>();
-		
-		// Calling async task to get json
-        new GetContacts().execute();		
+
+		// Looks like retaining the fragment makes sure contactList member variable is preserved
+		// If you don't retain even after page rotation place list is reloaded from the server hinting if statement below is entered
+		// Retaining and then checking contactList existence prevents reload from server on screen orientation changes and when user exits the app
+		//   via the home button and then comes back
+		// If user exits the app via back button and enters the app again server is hit again though.
+		// Also when you go to place details and come back via the back button place list is NOT reloaded from the server
+		//   this was true even w/o the retain and if check below
+		// If you go to place details and come back through the ancestral navigation on the menu bar server is hit again. I don't have a way to prevent this.
+		//   actually I do through android:launchMode="singleTask" in the manifest file
+		setRetainInstance(true);
+		if (contactList == null){
+			contactList = new ArrayList<HashMap<String, String>>();
+			// Calling async task to get json
+	        new GetContacts().execute();		
+		}
 	}
 
 	//@TargetApi(11)
@@ -133,11 +144,32 @@ public class PlaceListFragment extends ListFragment {
             /**
              * Updating parsed JSON data into ListView
              * */
-            ContactAdapter adapter = new ContactAdapter(contactList);
-            setListAdapter(adapter);
+            //ContactAdapter adapter = new ContactAdapter(contactList);
+            //setListAdapter(adapter);
+            setupAdapter();
         }
  
     }
+    
+	void setupAdapter() {
+		if (getActivity() == null)
+			return;
+		
+		if (contactList != null) {
+
+			if (getListAdapter() == null) {
+	            ContactAdapter adapter = new ContactAdapter(contactList);
+	            setListAdapter(adapter);
+			} else {
+				// This makes sure newly added items to the data set get displayed.
+				ArrayAdapter<HashMap<String, String>> listItemsDapter = (ContactAdapter) this.getListAdapter();
+				listItemsDapter.notifyDataSetChanged();
+			}
+
+		} else {
+			setListAdapter(null);
+		}
+	}
     
 	@Override
     public void onListItemClick(ListView l, View v, int position, long id) {
@@ -145,24 +177,21 @@ public class PlaceListFragment extends ListFragment {
 		HashMap<String, String> c = ((ContactAdapter)getListAdapter()).getItem(position);
 		Log.d(TAG, c.get(TAG_NAME) + " was clicked");
 		
-		// Network calls cannot be made on the main thread
-        new GetPlaceDetails().execute(c.get(TAG_PLACE_ID));		
+		String placeId = c.get(TAG_PLACE_ID);
+		PlaceDetail placeDetail = PlaceDetailLab.get(getActivity()).getPlaceDetail(placeId);
 		
-        /*
-		// TODO
-		// Make data call here to get the json result.
-		PlaceDetail pDetail = new PlaceDetailFetcher().apacheDownloadPlaceDetail(c.get(TAG_PLACE_ID));
-
-		// TODO
-		// Add pDetail to singleton store of placeDetails
-        PlaceDetailLab.get(getActivity()).addPlaceDetail(pDetail);
-
-        // Start PlaceDetailActivity with this Place
-         Intent i = new Intent(getActivity(), PlaceDetailActivity.class);
-         i.putExtra(PlaceDetailFragment.EXTRA_PLACE_ID, c.get(TAG_PLACE_ID));
-        // startActivity(i);
-         startActivityForResult(i, REQUEST_PLACE_DETAIL);
-         */
+		if (placeDetail == null){
+			// Network calls cannot be made on the main thread
+	        new GetPlaceDetails().execute(c.get(TAG_PLACE_ID));		
+		}
+		else{
+			// You save a network call if user clicks on a listing she visited before
+            // Start PlaceDetailActivity with this Place
+            Intent i = new Intent(getActivity(), PlaceDetailActivity.class);
+            i.putExtra(PlaceDetailFragment.EXTRA_PLACE_ID, placeId);
+            startActivityForResult(i, REQUEST_PLACE_DETAIL);
+		}
+		
     }
 	
 	/**
