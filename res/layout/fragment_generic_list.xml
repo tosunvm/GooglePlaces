@@ -1,33 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
-    <ListView
-        android:id="@android:id/list"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" >
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:descendantFocusability="beforeDescendants"
+    android:focusableInTouchMode="true" >
         
-    </ListView>
     <LinearLayout
-        android:id="@android:id/empty"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical" >
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp" >
 
-        <TextView
-            android:id="@+id/empty_list_text_view"
+		<EditText
+		    android:id="@+id/place_query_edit_text"
+		    android:layout_width="wrap_content"
+		    android:layout_height="wrap_content"
+		    android:layout_weight="1"
+		    android:hint="@string/place_query_hint"
+		    android:singleLine="true"
+		    android:imeOptions="actionDone|flagNoExtractUi"/>
+			<!--  above imeOptions prevent EditText from spanning whole screen
+			      in landscape mode -->
+	    <Button
+            android:id="@+id/place_query_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:padding="24dp"
-            android:text="List is empty."
-            android:layout_gravity="center"
-            android:textStyle="bold" />
-        <Button
-            android:id="@+id/create_crime_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="@string/create_contact_button"/>
+            android:text="@string/place_query_button"
+            android:layout_weight="0"/>
     </LinearLayout>
 
-</FrameLayout>
+	<FrameLayout
+	    android:layout_width="match_parent"
+	    android:layout_height="match_parent">
+	    
+	    <ListView
+	        android:id="@android:id/list"
+	        android:layout_width="match_parent"
+	        android:layout_height="match_parent" >
+	        
+	    </ListView>
+	    <LinearLayout
+	        android:id="@android:id/empty"
+	        android:layout_width="match_parent"
+	        android:layout_height="match_parent"
+	        android:orientation="vertical" >
+	
+	        <TextView
+	            android:id="@+id/empty_list_text_view"
+	            android:layout_width="wrap_content"
+	            android:layout_height="wrap_content"
+	            android:padding="24dp"
+	            android:text="@string/empty_list_text"
+	            android:layout_gravity="center"
+	            android:textStyle="bold" />
+	        <Button
+	            android:id="@+id/create_crime_button"
+	            android:layout_width="wrap_content"
+	            android:layout_height="wrap_content"
+	            android:layout_gravity="center"
+	            android:text="@string/create_contact_button"/>
+	    </LinearLayout>
+	</FrameLayout>
+</LinearLayout>

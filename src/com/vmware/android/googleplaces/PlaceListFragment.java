@@ -2,11 +2,14 @@ package com.vmware.android.googleplaces;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import android.annotation.TargetApi;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -19,13 +22,46 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+
 import com.vmware.android.googleplaces.R;
 
+/**
+ * 
+ * @author stosun
+ * Google Maps Place API Documentation
+ * https://developers.google.com/places/documentation/search
+
+ * https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=-33.8670522,151.1957362&radius=500&types=food&name=cruise&key=AddYourOwnKeyHere
+ * https://maps.googleapis.com/maps/api/place/textsearch/xml?query=restaurants+in+Belmont+MA&key=AddYourOwnKeyHere
+ * 
+ * "location, type, name" search
+ * https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=42.380609,-71.175437&radius=1500&types=food&name=pizza&key=AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA
+ * "location, keyword" search
+ * https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=42.380609,-71.175437&radius=1500&keyword=pizza&key=AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA
+ * https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=42.380609,-71.175437&radius=1500&keyword=liquor+store&key=AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA
+ * 
+ * TODO:
+ * Features:
+ * d- add search text box and search button on initial screen
+ * - store search results in a database on each search for persistence
+ * - add continuous scrolling for listing results
+ * - add caching for listing results
+ * - Tie Done button on keyboard to search initiation
+ * 
+ * Code cleanup:
+ * d- Pull hard coded text into resource files
+ * d- Pull API_KEY to a single variable in a resource file
+ * 
+ * 
+ */
 public class PlaceListFragment extends ListFragment {
 	
 	private static final String TAG = "PlaceListFragment";
@@ -43,11 +79,13 @@ public class PlaceListFragment extends ListFragment {
 	private static final int REQUEST_PLACE_DETAIL = 0;
  
     // Hashmap for ListView
-    ArrayList<HashMap<String, String>> contactList;
-    
+    ArrayList<HashMap<String, String>> mPlaceList;
+
+    private Button mPlaceQueryButton;
+	private EditText mQueryEditText;
     private Button mCreateCrimeButton;
 	private TextView mEmptyListTextView;
-
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -63,10 +101,10 @@ public class PlaceListFragment extends ListFragment {
 		// If you go to place details and come back through the ancestral navigation on the menu bar server is hit again. I don't have a way to prevent this.
 		//   actually I do through android:launchMode="singleTask" in the manifest file
 		setRetainInstance(true);
-		if (contactList == null){
-			contactList = new ArrayList<HashMap<String, String>>();
+		if (mPlaceList == null){
+			mPlaceList = new ArrayList<HashMap<String, String>>();
 			// Calling async task to get json
-	        new GetContacts().execute();		
+	        new GetPlaces().execute("pizza");		
 		}
 	}
 
@@ -77,8 +115,27 @@ public class PlaceListFragment extends ListFragment {
         
 		View v = inflater.inflate(R.layout.fragment_generic_list, parent, false);
 
+		mQueryEditText = (EditText) v.findViewById(R.id.place_query_edit_text);
+        mPlaceQueryButton = (Button)v.findViewById(R.id.place_query_button);
+        mPlaceQueryButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+            	// Do not change mPlaceList instance pointer otw. adapter will be pointing to old instance of mPlaceList.
+            	// Just clear contents since this is a new search
+            	// mPlaceList = new ArrayList<HashMap<String, String>>();
+            	if (mPlaceList != null){
+            		mPlaceList.clear();
+            	}
+            	// Get rid of the keyboard
+            	InputMethodManager imm = (InputMethodManager)getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+           		imm.hideSoftInputFromWindow(mQueryEditText.getWindowToken(), 0);
+            	// Calling async task to get json
+    	        new GetPlaces().execute(mQueryEditText.getText().toString());		
+            }
+        });
+		
 		mEmptyListTextView = (TextView) v.findViewById(R.id.empty_list_text_view);
-        mEmptyListTextView.setText("There are no crimes, please add one.");
+        mEmptyListTextView.setText(R.string.empty_list_text);
         mCreateCrimeButton = (Button)v.findViewById(R.id.create_crime_button);
 
         return v;
@@ -115,23 +172,28 @@ public class PlaceListFragment extends ListFragment {
 	/**
      * Async task class to get places json by making HTTP call
      * */
-    private class GetContacts extends AsyncTask<Void, Void, Void> {
+    private class GetPlaces extends AsyncTask<String, Void, Void> {
  
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
             // Showing progress dialog
             pDialog = new ProgressDialog(getActivity());
-            pDialog.setMessage("Please wait...");
+            pDialog.setMessage(getActivity().getString(R.string.please_wait_text));
             pDialog.setCancelable(false);
             pDialog.show();
  
         }
  
         @Override
-        protected Void doInBackground(Void... arg0) {
-            //contactList = new ContactsFetcher().javaDownloadContactItems(url);
-            contactList = new PlaceFetcher().apacheDownloadPlaceItems(url);
+        protected Void doInBackground(String... arg0) {
+        	if (mPlaceList != null){
+        		mPlaceList.addAll(new PlaceFetcher().apacheDownloadPlaceItems(arg0[0], getActivity()));
+        	}
+        	else{
+        		// This should never happen
+        		mPlaceList = new PlaceFetcher().apacheDownloadPlaceItems(arg0[0], getActivity());
+        	}
             return null;
         }
  
@@ -144,8 +206,6 @@ public class PlaceListFragment extends ListFragment {
             /**
              * Updating parsed JSON data into ListView
              * */
-            //ContactAdapter adapter = new ContactAdapter(contactList);
-            //setListAdapter(adapter);
             setupAdapter();
         }
  
@@ -155,18 +215,21 @@ public class PlaceListFragment extends ListFragment {
 		if (getActivity() == null)
 			return;
 		
-		if (contactList != null) {
+		if (mPlaceList != null) {
 
-			if (getListAdapter() == null) {
-	            ContactAdapter adapter = new ContactAdapter(contactList);
-	            setListAdapter(adapter);
-			} else {
+			if (getListAdapter() != null) {
 				// This makes sure newly added items to the data set get displayed.
-				ArrayAdapter<HashMap<String, String>> listItemsDapter = (ContactAdapter) this.getListAdapter();
-				listItemsDapter.notifyDataSetChanged();
+				ArrayAdapter<HashMap<String, String>> listItemsAdapter = (ContactAdapter) this.getListAdapter();
+				listItemsAdapter.notifyDataSetChanged();
+			} else {
+				// Adapter will be null only once on first execution
+				// You need to make sure mPlaceList does not get nulled going forward, otw. adapter will be pointing to wrong mPlaceList.
+	            ContactAdapter adapter = new ContactAdapter(mPlaceList);
+	            setListAdapter(adapter);
 			}
 
 		} else {
+    		// This should never happen
 			setListAdapter(null);
 		}
 	}
@@ -204,7 +267,7 @@ public class PlaceListFragment extends ListFragment {
             super.onPreExecute();
             // Showing progress dialog
             pDialog = new ProgressDialog(getActivity());
-            pDialog.setMessage("Please wait...");
+            pDialog.setMessage(getActivity().getString(R.string.please_wait_text));
             pDialog.setCancelable(false);
             pDialog.show();
  
@@ -213,7 +276,7 @@ public class PlaceListFragment extends ListFragment {
         @Override
         protected String doInBackground(String... arg0) {
         	// Make data call here to get the json result.
-    		PlaceDetail pDetail = new PlaceDetailFetcher().apacheDownloadPlaceDetail(arg0[0]);
+    		PlaceDetail pDetail = new PlaceDetailFetcher().apacheDownloadPlaceDetail(arg0[0], getActivity());
 
     		// TODO
     		// Add pDetail to singleton store of placeDetails

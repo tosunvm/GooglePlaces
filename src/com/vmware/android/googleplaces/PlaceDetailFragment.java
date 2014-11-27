@@ -90,7 +90,7 @@ public class PlaceDetailFragment extends Fragment {
 		mAddressTextView.setText(mPlaceDetail.getFormattedAddress());
 
 		mMapButton = (Button)v.findViewById(R.id.place_detail_map);
-		mMapButton.setText("Map");
+		mMapButton.setText(R.string.place_detail_map_button);
 		if ((mPlaceDetail.getLat() == Double.NaN) || (mPlaceDetail.getLon() == Double.NaN)){
 			mMapButton.setEnabled(false);
 		}
@@ -105,7 +105,7 @@ public class PlaceDetailFragment extends Fragment {
         });
 		
 		mWebSiteButton = (Button)v.findViewById(R.id.place_detail_webSite);		
-		mWebSiteButton.setText("WebSite");
+		mWebSiteButton.setText(R.string.place_detail_web_button);
 		if (mPlaceDetail.getWebSiteUrl().equals("")){
 			mWebSiteButton.setEnabled(false);
 		}

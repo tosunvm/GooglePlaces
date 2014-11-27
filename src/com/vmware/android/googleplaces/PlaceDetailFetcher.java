@@ -8,6 +8,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 
@@ -17,7 +18,7 @@ public class PlaceDetailFetcher {
 	// Used to construct:
 	// "https://maps.googleapis.com/maps/api/place/details/json?placeid=ChIJN1t_tDeuEmsRUsoyG83frY4&key=AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA";
 	private static final String ENDPOINT = "https://maps.googleapis.com/maps/api/place/details/json";
-    private static final String API_KEY = "AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA";
+    //private static final String API_KEY = "AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA";
 	// JSON Node names
 	private static final String TAG_PLACE = "result";
 
@@ -40,13 +41,13 @@ public class PlaceDetailFetcher {
 		return pDetail;
 	}
 
-	public PlaceDetail apacheDownloadPlaceDetail(String placeId) {
+	public PlaceDetail apacheDownloadPlaceDetail(String placeId, Context c) {
 
 		Log.i(TAG, "place_id called: " + placeId);
 		
 		String url = Uri.parse(ENDPOINT).buildUpon()
 				.appendQueryParameter("placeid", placeId)
-				.appendQueryParameter("key", API_KEY)
+				.appendQueryParameter("key", c.getString(R.string.GOOGLE_PLACES_API_KEY))
 				.build().toString();
 
 		Log.i(TAG, "URL called: " + url);

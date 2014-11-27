@@ -8,6 +8,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
+import android.net.Uri;
 import android.util.Log;
 
 public class PlaceFetcher {
@@ -23,6 +25,11 @@ public class PlaceFetcher {
 	private static final String TAG_LOCATION = "location";
 	private static final String TAG_LAT = "lat";
 	private static final String TAG_LON = "lng";
+	
+	private static final String ENDPOINT = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
+    //private static final String API_KEY = "AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA";
+    private static final String LOCATION = "42.380609,-71.175437";
+    private static final String RADIUS = "1500";
 
 	void parseItems(ArrayList<HashMap<String, String>> items, String jsonStr) {
 
@@ -72,9 +79,20 @@ public class PlaceFetcher {
 	}
 
 	public ArrayList<HashMap<String, String>> apacheDownloadPlaceItems(
-			String url) {
+			String query, Context c) {
 		ArrayList<HashMap<String, String>> items = new ArrayList<HashMap<String, String>>();
+		
+		Log.i(TAG, "query called: " + query);
+		
+		String url = Uri.parse(ENDPOINT).buildUpon()
+				.appendQueryParameter("location", LOCATION)
+				.appendQueryParameter("radius", RADIUS)
+				.appendQueryParameter("keyword", query)
+				.appendQueryParameter("key", c.getString(R.string.GOOGLE_PLACES_API_KEY))
+				.build().toString();
+
 		Log.i(TAG, "URL called: " + url);
+		
 		// Creating service handler class instance
 		HttpApache sh = new HttpApache();
 		// Making a request to url and getting response
