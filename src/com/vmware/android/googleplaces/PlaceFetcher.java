@@ -17,6 +17,7 @@ public class PlaceFetcher {
 	private static final String TAG = "PlaceFetcher";
 	// JSON Node names
 	private static final String TAG_PLACES = "results";
+	private static final String TAG_NEXT_PAGE_TOKEN = "next_page_token";
 	private static final String TAG_PLACE_ID = "place_id";
 	private static final String TAG_NAME = "name";
 	private static final String TAG_VICINITY = "vicinity";
@@ -29,16 +30,18 @@ public class PlaceFetcher {
 	private static final String ENDPOINT = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
     //private static final String API_KEY = "AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA";
     private static final String LOCATION = "42.380609,-71.175437";
-    private static final String RADIUS = "1500";
+    private static final String RADIUS = "3000"; // this is in meters
 
-	void parseItems(ArrayList<HashMap<String, String>> items, String jsonStr) {
+    // Note that nextPage is being used as an in/out parameter
+	void parseItems(ArrayList<HashMap<String, String>> items, String jsonStr, StringBuilder nextPage) {
 
 		// places JSONArray
 		JSONArray places = null;
 
 		try {
 			JSONObject jsonObj = new JSONObject(jsonStr);
-
+			// Get next_page_token
+			nextPage.append(jsonObj.optString(TAG_NEXT_PAGE_TOKEN));
 			// Getting JSON Array node
 			places = jsonObj.getJSONArray(TAG_PLACES);
 
@@ -79,7 +82,7 @@ public class PlaceFetcher {
 	}
 
 	public ArrayList<HashMap<String, String>> apacheDownloadPlaceItems(
-			String query, Context c) {
+			String query, StringBuilder nextPage, Context c) {
 		ArrayList<HashMap<String, String>> items = new ArrayList<HashMap<String, String>>();
 		
 		Log.i(TAG, "query called: " + query);
@@ -88,6 +91,7 @@ public class PlaceFetcher {
 				.appendQueryParameter("location", LOCATION)
 				.appendQueryParameter("radius", RADIUS)
 				.appendQueryParameter("keyword", query)
+				.appendQueryParameter("pagetoken", nextPage.toString())
 				.appendQueryParameter("key", c.getString(R.string.GOOGLE_PLACES_API_KEY))
 				.build().toString();
 
@@ -100,8 +104,10 @@ public class PlaceFetcher {
 
 		longInfo("Apache Response: > " + jsonStr);
 		if (jsonStr != null) {
-
-			parseItems(items, jsonStr);
+			// Clear nextPage value
+			//nextPage.delete(0, nextPage.length());
+			nextPage.setLength(0);
+			parseItems(items, jsonStr, nextPage);
 		} else {
 			Log.e(TAG, "Couldn't get any data from the url");
 		}
@@ -122,8 +128,8 @@ public class PlaceFetcher {
 			longInfo("Java Response: > " + jsonStr);
 
 			if (jsonStr != null) {
-
-				parseItems(items, jsonStr);
+				
+				parseItems(items, jsonStr, new StringBuilder());
 			} else {
 				Log.e(TAG, "Couldn't get any data from the url");
 			}

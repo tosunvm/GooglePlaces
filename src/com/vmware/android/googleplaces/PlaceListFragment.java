@@ -23,6 +23,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AbsListView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -30,6 +31,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.vmware.android.googleplaces.R;
 
@@ -52,8 +54,8 @@ import com.vmware.android.googleplaces.R;
  * Features:
  * d- add search text box and search button on initial screen
  * - store search results in a database on each search for persistence
- * - add continuous scrolling for listing results
- * - add caching for listing results
+ * d- add continuous scrolling for listing results
+ * d- add caching for listing results
  * - Tie Done button on keyboard to search initiation
  * 
  * Code cleanup:
@@ -78,21 +80,25 @@ public class PlaceListFragment extends ListFragment {
 	
 	private static final int REQUEST_PLACE_DETAIL = 0;
  
-    // Hashmap for ListView
-    ArrayList<HashMap<String, String>> mPlaceList;
-
     private Button mPlaceQueryButton;
 	private EditText mQueryEditText;
     private Button mCreateCrimeButton;
 	private TextView mEmptyListTextView;
-	
+
+    // Hashmap for ListView
+    private ArrayList<HashMap<String, String>> mPlaceList;
+    private StringBuilder mNextPage;
+    private String mQueryText;
+	private int mPages;
+	private int mTotalCount = 0;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		getActivity().setTitle(R.string.places_title);
 
 		// Looks like retaining the fragment makes sure contactList member variable is preserved
-		// If you don't retain even after page rotation place list is reloaded from the server hinting if statement below is entered
+		// If you don't retain, even after page rotation, place list is reloaded from the server hinting "if" statement below is entered
 		// Retaining and then checking contactList existence prevents reload from server on screen orientation changes and when user exits the app
 		//   via the home button and then comes back
 		// If user exits the app via back button and enters the app again server is hit again though.
@@ -101,10 +107,13 @@ public class PlaceListFragment extends ListFragment {
 		// If you go to place details and come back through the ancestral navigation on the menu bar server is hit again. I don't have a way to prevent this.
 		//   actually I do through android:launchMode="singleTask" in the manifest file
 		setRetainInstance(true);
+		mNextPage = new StringBuilder();
+		mQueryText = "pizza";
+		mTotalCount = 0;
 		if (mPlaceList == null){
 			mPlaceList = new ArrayList<HashMap<String, String>>();
 			// Calling async task to get json
-	        new GetPlaces().execute("pizza");		
+	        new GetPlaces().execute(new StringBuilder(mQueryText), mNextPage);		
 		}
 	}
 
@@ -116,6 +125,9 @@ public class PlaceListFragment extends ListFragment {
 		View v = inflater.inflate(R.layout.fragment_generic_list, parent, false);
 
 		mQueryEditText = (EditText) v.findViewById(R.id.place_query_edit_text);
+		if (!mQueryEditText.getText().toString().trim().isEmpty()){
+			mQueryText = mQueryEditText.getText().toString().trim();
+		}
         mPlaceQueryButton = (Button)v.findViewById(R.id.place_query_button);
         mPlaceQueryButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -129,11 +141,51 @@ public class PlaceListFragment extends ListFragment {
             	// Get rid of the keyboard
             	InputMethodManager imm = (InputMethodManager)getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
            		imm.hideSoftInputFromWindow(mQueryEditText.getWindowToken(), 0);
+           		// 1/3 Get search text
+    			mQueryText = mQueryEditText.getText().toString().trim();
+    			// 2/3 Clear total item count you are keeping track of
+    			mTotalCount = 0;
+    			// 3/3 Clear nextPage value
+    			mNextPage.setLength(0);
             	// Calling async task to get json
-    	        new GetPlaces().execute(mQueryEditText.getText().toString());		
+    	        new GetPlaces().execute(new StringBuilder(mQueryText), mNextPage);		
             }
         });
-		
+        
+        // This causes a crash on first start since ListView member variable is not initialized yet for getListView().
+        // getListView().setOnScrollListener(new AbsListView.OnScrollListener() {
+        ListView mListView = (ListView) v.findViewById(android.R.id.list);
+        mListView.setOnScrollListener(new AbsListView.OnScrollListener() {
+			@Override
+			public void onScroll(AbsListView view, int firstVisibleItem,
+					int visibleItemCount, int totalItemCount) {
+				// Log.d(TAG, String.format("firstVisibleItem: %1$d, visibleItemCount: %2$d, totalItemCount: %3$d", firstVisibleItem, visibleItemCount, totalItemCount));
+				if ((visibleItemCount > 0)
+						&& ((firstVisibleItem + visibleItemCount) == totalItemCount)
+						&& (totalItemCount > mTotalCount)) {
+
+					mTotalCount = totalItemCount;
+					
+					if (!mNextPage.toString().trim().isEmpty()){
+						new GetPlaces().execute(new StringBuilder(mQueryText), mNextPage);
+					}
+					else{
+				        String noNextPageText = getActivity().getString(R.string.no_next_page_text) + mTotalCount;
+				        Toast.makeText(getActivity(), noNextPageText, Toast.LENGTH_LONG).show();						
+					}
+					
+					Log.e(TAG, "firstVisibleItem: " + firstVisibleItem + " visibleItemCount: " + visibleItemCount +
+							" totalItemCount: " + totalItemCount);
+					Log.e(TAG, "Scrolled: current_page: " + mNextPage);
+				}
+			}
+
+			public void onScrollStateChanged(AbsListView view, int scrollState) {
+				// TODO Auto-generated method stub
+			}
+
+		});
+        
 		mEmptyListTextView = (TextView) v.findViewById(R.id.empty_list_text_view);
         mEmptyListTextView.setText(R.string.empty_list_text);
         mCreateCrimeButton = (Button)v.findViewById(R.id.create_crime_button);
@@ -172,7 +224,7 @@ public class PlaceListFragment extends ListFragment {
 	/**
      * Async task class to get places json by making HTTP call
      * */
-    private class GetPlaces extends AsyncTask<String, Void, Void> {
+    private class GetPlaces extends AsyncTask<StringBuilder, Void, ArrayList<HashMap<String, String>>> {
  
         @Override
         protected void onPreExecute() {
@@ -186,25 +238,29 @@ public class PlaceListFragment extends ListFragment {
         }
  
         @Override
-        protected Void doInBackground(String... arg0) {
-        	if (mPlaceList != null){
-        		mPlaceList.addAll(new PlaceFetcher().apacheDownloadPlaceItems(arg0[0], getActivity()));
-        	}
-        	else{
-        		// This should never happen
-        		mPlaceList = new PlaceFetcher().apacheDownloadPlaceItems(arg0[0], getActivity());
-        	}
-            return null;
+        protected ArrayList<HashMap<String, String>> doInBackground(StringBuilder... arg0) {
+            return new PlaceFetcher().apacheDownloadPlaceItems(arg0[0].toString(), arg0[1], getActivity());
         }
  
         @Override
-        protected void onPostExecute(Void result) {
+        protected void onPostExecute(ArrayList<HashMap<String, String>> result) {
             super.onPostExecute(result);
             // Dismiss the progress dialog
             if (pDialog.isShowing())
                 pDialog.dismiss();
+            
+            // UI should be updated on the main thread. onPostExecute is on the main thread
+            // whereas doInBackground is on the spawned thread.
+            if (mPlaceList != null){
+        		mPlaceList.addAll(result);
+        	}
+        	else{
+        		// This should never happen
+        		mPlaceList = result;
+        	}
+            
             /**
-             * Updating parsed JSON data into ListView
+             * Update parsed JSON data into ListView
              * */
             setupAdapter();
         }
