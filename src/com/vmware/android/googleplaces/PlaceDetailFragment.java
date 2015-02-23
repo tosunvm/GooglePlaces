@@ -43,7 +43,10 @@ public class PlaceDetailFragment extends Fragment {
 		//String placeId = (String)getActivity().getIntent().getSerializableExtra(EXTRA_PLACE_ID);
 		String placeId = (String)getArguments().getSerializable(EXTRA_PLACE_ID);
 		Log.i(TAG, "place detail fragment loaded with place id" + placeId);
-		mPlaceDetail = PlaceDetailLab.get(getActivity()).getPlaceDetail(placeId);
+		// Get fetched place detail from cache.
+		// mPlaceDetail = PlaceDetailLab.get(getActivity()).getPlaceDetail(placeId);
+		// Get fetched place detail from db.
+		mPlaceDetail = PlaceDatabaseHelper.get(getActivity()).getPlaceDetail(placeId);
 		setHasOptionsMenu(true);
 		//setRetainInstance(true);
 	}
