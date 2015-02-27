@@ -87,29 +87,46 @@ public class PlaceFetcher {
 		
 		Log.i(TAG, "query called: " + query);
 		
-		String url = Uri.parse(ENDPOINT).buildUpon()
-				.appendQueryParameter("location", LOCATION)
-				.appendQueryParameter("radius", RADIUS)
-				.appendQueryParameter("keyword", query)
-				.appendQueryParameter("pagetoken", nextPage.toString())
-				.appendQueryParameter("key", c.getString(R.string.GOOGLE_PLACES_API_KEY))
-				.build().toString();
+		// Check against a ListingResults db table here.
+		PlaceDatabaseHelper mDbHelper = PlaceDatabaseHelper.get(c);
+		// Check in db first
+		String listingResultsJson = mDbHelper.getListingResults(query, RADIUS, LOCATION, nextPage.toString());
+		if (listingResultsJson == null) {
+			String url = Uri
+					.parse(ENDPOINT)
+					.buildUpon()
+					.appendQueryParameter("location", LOCATION)
+					.appendQueryParameter("radius", RADIUS)
+					.appendQueryParameter("keyword", query)
+					.appendQueryParameter("pagetoken", nextPage.toString())
+					.appendQueryParameter("key",
+							c.getString(R.string.GOOGLE_PLACES_API_KEY))
+					.build().toString();
 
-		Log.i(TAG, "URL called: " + url);
+			Log.i(TAG, "URL called: " + url);
+
+			// Creating service handler class instance
+			HttpApache sh = new HttpApache();
+			// Making a request to url and getting response
+			listingResultsJson = sh.makeHttpCall(url, HttpApache.GET);
+			if (listingResultsJson != null) {
+				// TODO
+	            // Add listingResultsJson to the database
+	            mDbHelper.insertListingResults(query, RADIUS, LOCATION, nextPage.toString(), listingResultsJson);
+			}
+
+			longInfo("Apache Response: > " + listingResultsJson);
+		} else {
+			longInfo("Db Response: > " + listingResultsJson);
+		}
 		
-		// Creating service handler class instance
-		HttpApache sh = new HttpApache();
-		// Making a request to url and getting response
-		String jsonStr = sh.makeHttpCall(url, HttpApache.GET);
-
-		longInfo("Apache Response: > " + jsonStr);
-		if (jsonStr != null) {
+		if (listingResultsJson != null) {
 			// Clear nextPage value
 			//nextPage.delete(0, nextPage.length());
 			nextPage.setLength(0);
-			parseItems(items, jsonStr, nextPage);
+			parseItems(items, listingResultsJson, nextPage);
 		} else {
-			Log.e(TAG, "Couldn't get any data from the url");
+			Log.e(TAG, "Couldn't get any data from the db or url");
 		}
 
 		return items;

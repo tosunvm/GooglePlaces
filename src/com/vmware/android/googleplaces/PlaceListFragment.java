@@ -53,6 +53,7 @@ import com.vmware.android.googleplaces.R;
  * TODO:
  * Features:
  * d- add search text box and search button on initial screen
+ * - add location search box on initial screen
  * - store search results in a database on each search for persistence
  * d- add continuous scrolling for listing results
  * d- add caching for listing results
