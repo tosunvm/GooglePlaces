@@ -53,6 +53,7 @@ import com.vmware.android.googleplaces.R;
  * TODO:
  * Features:
  * d- add search text box and search button on initial screen
+ * - add location search box on initial screen
  * - store search results in a database on each search for persistence
  * d- add continuous scrolling for listing results
  * d- add caching for listing results
@@ -87,6 +88,7 @@ public class PlaceListFragment extends ListFragment {
 
     // Hashmap for ListView
     private ArrayList<HashMap<String, String>> mPlaceList;
+    private PlaceDatabaseHelper mDbHelper;
     private StringBuilder mNextPage;
     private String mQueryText;
 	private int mPages;
@@ -97,9 +99,9 @@ public class PlaceListFragment extends ListFragment {
 		super.onCreate(savedInstanceState);
 		getActivity().setTitle(R.string.places_title);
 
-		// Looks like retaining the fragment makes sure contactList member variable is preserved
+		// Looks like retaining the fragment makes sure mPlaceList member variable is preserved
 		// If you don't retain, even after page rotation, place list is reloaded from the server hinting "if" statement below is entered
-		// Retaining and then checking contactList existence prevents reload from server on screen orientation changes and when user exits the app
+		// Retaining and then checking mPlaceList existence prevents reload from server on screen orientation changes and when user exits the app
 		//   via the home button and then comes back
 		// If user exits the app via back button and enters the app again server is hit again though.
 		// Also when you go to place details and come back via the back button place list is NOT reloaded from the server
@@ -110,6 +112,9 @@ public class PlaceListFragment extends ListFragment {
 		mNextPage = new StringBuilder();
 		mQueryText = "pizza";
 		mTotalCount = 0;
+		// Best is to have a single instance of this database helper object for the application.
+		// I might want to convert PlaceDatabaseHelper class to singleton in the future.
+		mDbHelper = PlaceDatabaseHelper.get(getActivity());
 		if (mPlaceList == null){
 			mPlaceList = new ArrayList<HashMap<String, String>>();
 			// Calling async task to get json
@@ -297,8 +302,11 @@ public class PlaceListFragment extends ListFragment {
 		Log.d(TAG, c.get(TAG_NAME) + " was clicked");
 		
 		String placeId = c.get(TAG_PLACE_ID);
-		PlaceDetail placeDetail = PlaceDetailLab.get(getActivity()).getPlaceDetail(placeId);
-		
+		// Check in cache first
+		// PlaceDetail placeDetail = PlaceDetailLab.get(getActivity()).getPlaceDetail(placeId);
+		// Check in db first
+		PlaceDetail placeDetail = mDbHelper.getPlaceDetail(placeId);
+
 		if (placeDetail == null){
 			// Network calls cannot be made on the main thread
 	        new GetPlaceDetails().execute(c.get(TAG_PLACE_ID));		
@@ -334,9 +342,10 @@ public class PlaceListFragment extends ListFragment {
         	// Make data call here to get the json result.
     		PlaceDetail pDetail = new PlaceDetailFetcher().apacheDownloadPlaceDetail(arg0[0], getActivity());
 
-    		// TODO
-    		// Add pDetail to singleton store of placeDetails
-            PlaceDetailLab.get(getActivity()).addPlaceDetail(pDetail);
+    		// Cache pDetail in singleton store of placeDetails
+            // PlaceDetailLab.get(getActivity()).addPlaceDetail(pDetail);
+            // Add pDetail to the database
+            mDbHelper.insertPlace(pDetail);
 
             return arg0[0];
         }

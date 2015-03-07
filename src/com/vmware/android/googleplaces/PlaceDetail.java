@@ -62,6 +62,10 @@ public class PlaceDetail {
 		return mFormattedAddress;
 	}
 
+	public void setFormattedAddress(String formattedAddress) {
+		mFormattedAddress = formattedAddress;
+	}
+
 	public String getFormattedPhone() {
 		return mFormattedPhone;
 	}
@@ -70,16 +74,32 @@ public class PlaceDetail {
 		return mWebSiteUrl;
 	}
 
+	public void setWebSiteUrl(String webSiteUrl) {
+		mWebSiteUrl = webSiteUrl;
+	}
+
 	public double getLat() {
 		return mLat;
+	}
+
+	public void setLat(double lat) {
+		mLat = lat;
 	}
 
 	public double getLon() {
 		return mLon;
 	}
 
+	public void setLon(double lon) {
+		mLon = lon;
+	}
+
 	public double getRating() {
 		return mRating;
+	}
+
+	public void setRating(double rating) {
+		mRating = rating;
 	}
 
 	@Override
