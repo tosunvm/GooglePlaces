@@ -1,5 +1,7 @@
 package com.vmware.android.googleplaces;
 
+import java.util.Date;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -13,8 +15,8 @@ import android.database.sqlite.SQLiteOpenHelper;
  */
 public class PlaceDatabaseHelper extends SQLiteOpenHelper {
     private static final String DB_NAME = "places.sqlite";
-    //private static final int VERSION = 1;
-    private static final int VERSION = 2;
+    // private static final int VERSION = 1;
+    private static final int VERSION = 3;
     
     private static final String TABLE_PLACE = "place";
     private static final String COLUMN_PLACE_PLACEID = "place_id";
@@ -26,6 +28,7 @@ public class PlaceDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_PLACE_LONGITUDE = "longitude";
 
     private static final String TABLE_LISTINGRESULTS = "listing_results";
+    private static final String COLUMN_LISTINGRESULTS_TIMESTAMP = "keyword";
     private static final String COLUMN_LISTINGRESULTS_KEYWORD = "keyword";
     private static final String COLUMN_LISTINGRESULTS_RADIUS = "radius";
     private static final String COLUMN_LISTINGRESULTS_LOCATION = "location";
@@ -48,30 +51,52 @@ public class PlaceDatabaseHelper extends SQLiteOpenHelper {
 	@Override
 	public void onCreate(SQLiteDatabase db) {
         // create the "place" table
-        db.execSQL("create table place (place_id varchar(100) primary key, place_name varchar(100)," +
-        			" formatted_address varchar(100), web_site_url varchar(100)," + 
-        			" rating real, latitude real, longitude real)");
+        db.execSQL("create table place (_id integer primary key autoincrement, place_id varchar(100) unique, place_name varchar(100)," +
+    			" formatted_address varchar(100), web_site_url varchar(100)," + 
+    			" rating real, latitude real, longitude real)");
+        // keep last 6 rows to avoid ballooning of table
+        db.execSQL(
+        		"CREATE TRIGGER place_delete_till_5 INSERT ON place WHEN (select count(*) from place)>10" +
+        			" BEGIN" +
+        				" DELETE FROM place WHERE place._id IN  (SELECT _id FROM place ORDER BY _id limit (select count(*) -5 from place ));" +
+        			" END;"
+        		);
         // create "ListingResults" table.
-        db.execSQL("create table listing_results (keyword varchar(100), radius varchar(10)," +
+        db.execSQL("create table listing_results (_id integer primary key autoincrement," + 
+        		"  timestamp integer, keyword varchar(100), radius varchar(10)," +
     			" location varchar(30), page_token varchar(100)," + 
     			" listing_result text)");
-
+        // keep last 6 rows to avoid ballooning of table
+        db.execSQL(
+        		"CREATE TRIGGER listing_results_delete_till_5 INSERT ON listing_results WHEN (select count(*) from listing_results)>10" +
+        			" BEGIN" +
+        				" DELETE FROM listing_results WHERE listing_results._id IN  (SELECT _id FROM listing_results ORDER BY _id limit (select count(*) -5 from listing_results ));" +
+        			" END;"
+        		);
 	}
 
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-		// TODO Auto-generated method stub
 		switch (oldVersion) {
 
 		case 1:
 			// upgrade logic from version 1 to 2
-			// create "ListingResults" table.
-			db.execSQL("create table listing_results (keyword varchar(100), radius varchar(10),"
-					+ " location varchar(30), page_token varchar(100),"
-					+ " listing_result text)");
 
 		case 2:
 			// upgrade logic from version 2 to 3
+			/*
+			db.execSQL("DROP TABLE place");
+	        db.execSQL("create table place (_id integer primary key autoincrement, place_id varchar(100) unique, place_name varchar(100)," +
+        			" formatted_address varchar(100), web_site_url varchar(100)," + 
+        			" rating real, latitude real, longitude real)");
+	        // keep last 6 rows to avoid ballooning of table
+	        db.execSQL(
+	        		"CREATE TRIGGER place_delete_till_5 INSERT ON place WHEN (select count(*) from place)>10" +
+	        			" BEGIN" +
+	        				" DELETE FROM place WHERE place._id IN  (SELECT _id FROM place ORDER BY _id limit (select count(*) -5 from place ));" +
+	        			" END;"
+	        		);
+	        */
 		case 3:
 			// upgrade logic from version 3 to 4
 			break;
@@ -128,9 +153,13 @@ public class PlaceDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public long insertListingResults(String query, String radius, String location, String nextPage, String listingResultsJson) {
-    	// TODO: There is nothing avoiding multiple rows to be inserted for the same <query, radius, location, nextPage> combination
-    	// at this point.
+    	// TODO: 
+    	// 1. There is nothing avoiding multiple rows to be inserted for the same <query, radius, location, nextPage> combination
+    	//    at this point.
+    	// 2. You can also add logic here to limit the table size to 10 rows or smth. This is achieved by triggers above.
+    	Date insertDate = new Date();
         ContentValues cv = new ContentValues();
+        cv.put(COLUMN_LISTINGRESULTS_TIMESTAMP, insertDate.getTime());
         cv.put(COLUMN_LISTINGRESULTS_KEYWORD, query);
         cv.put(COLUMN_LISTINGRESULTS_RADIUS, radius);
         cv.put(COLUMN_LISTINGRESULTS_LOCATION, location);

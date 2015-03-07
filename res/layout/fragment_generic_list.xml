@@ -10,22 +10,34 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp" >
-
-		<EditText
-		    android:id="@+id/place_query_edit_text"
-		    android:layout_width="wrap_content"
-		    android:layout_height="wrap_content"
-		    android:layout_weight="1"
-		    android:hint="@string/place_query_hint"
-		    android:singleLine="true"
-		    android:imeOptions="actionDone|flagNoExtractUi"/>
-			<!--  above imeOptions prevent EditText from spanning whole screen
-			      in landscape mode -->
-	    <Button
-            android:id="@+id/place_query_button"
+        android:layout_marginRight="16dp"
+        android:orientation="horizontal" >
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_weight="1">
+
+            <EditText
+                android:id="@+id/place_query_edit_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/place_query_hint"
+                android:imeOptions="actionDone|flagNoExtractUi"
+                android:singleLine="true" />
+            <!-- above imeOptions prevent EditText from spanning whole screen in landscape mode -->
+            <EditText
+                android:id="@+id/place_location_edit_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:hint="@string/place_location_hint"
+                android:imeOptions="actionDone|flagNoExtractUi"
+                android:singleLine="true" />
+        </LinearLayout>
+		<Button
+            android:id="@+id/place_query_button"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
             android:text="@string/place_query_button"
             android:layout_weight="0"/>
     </LinearLayout>
@@ -54,12 +66,6 @@
 	            android:text="@string/empty_list_text"
 	            android:layout_gravity="center"
 	            android:textStyle="bold" />
-	        <Button
-	            android:id="@+id/create_crime_button"
-	            android:layout_width="wrap_content"
-	            android:layout_height="wrap_content"
-	            android:layout_gravity="center"
-	            android:text="@string/create_contact_button"/>
 	    </LinearLayout>
 	</FrameLayout>
 </LinearLayout>

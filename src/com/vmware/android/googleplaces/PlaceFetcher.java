@@ -29,7 +29,7 @@ public class PlaceFetcher {
 	
 	private static final String ENDPOINT = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
     //private static final String API_KEY = "AIzaSyAfLfmLpEiyuSmZxgUvUaR34y5zC9FgISA";
-    private static final String LOCATION = "42.380609,-71.175437";
+    private static String mLocationString = "42.380609,-71.175437";
     private static final String RADIUS = "3000"; // this is in meters
 
     // Note that nextPage is being used as an in/out parameter
@@ -82,23 +82,23 @@ public class PlaceFetcher {
 	}
 
 	public ArrayList<HashMap<String, String>> apacheDownloadPlaceItems(
-			String query, StringBuilder nextPage, Context c) {
+			SearchQuery query, Context c) {
 		ArrayList<HashMap<String, String>> items = new ArrayList<HashMap<String, String>>();
-		
+		mLocationString = query.getLat() + "," + query.getLon();
 		Log.i(TAG, "query called: " + query);
 		
 		// Check against a ListingResults db table here.
 		PlaceDatabaseHelper mDbHelper = PlaceDatabaseHelper.get(c);
 		// Check in db first
-		String listingResultsJson = mDbHelper.getListingResults(query, RADIUS, LOCATION, nextPage.toString());
+		String listingResultsJson = mDbHelper.getListingResults(query.getQueryText(), RADIUS, mLocationString, query.getNextPage().toString());
 		if (listingResultsJson == null) {
 			String url = Uri
 					.parse(ENDPOINT)
 					.buildUpon()
-					.appendQueryParameter("location", LOCATION)
+					.appendQueryParameter("location", mLocationString)
 					.appendQueryParameter("radius", RADIUS)
-					.appendQueryParameter("keyword", query)
-					.appendQueryParameter("pagetoken", nextPage.toString())
+					.appendQueryParameter("keyword", query.getQueryText())
+					.appendQueryParameter("pagetoken", query.getNextPage().toString())
 					.appendQueryParameter("key",
 							c.getString(R.string.GOOGLE_PLACES_API_KEY))
 					.build().toString();
@@ -112,19 +112,21 @@ public class PlaceFetcher {
 			if (listingResultsJson != null) {
 				// TODO
 	            // Add listingResultsJson to the database
-	            mDbHelper.insertListingResults(query, RADIUS, LOCATION, nextPage.toString(), listingResultsJson);
+	            mDbHelper.insertListingResults(query.getQueryText(), RADIUS, mLocationString, query.getNextPage().toString(), listingResultsJson);
 			}
 
-			longInfo("Apache Response: > " + listingResultsJson);
+			//longInfo("Apache Response: > " + listingResultsJson);
+			Log.i(TAG, "Apache Response received.");
 		} else {
-			longInfo("Db Response: > " + listingResultsJson);
+			// longInfo("Db Response: > " + listingResultsJson);
+			Log.i(TAG, "Db Response received.");
 		}
 		
 		if (listingResultsJson != null) {
 			// Clear nextPage value
-			//nextPage.delete(0, nextPage.length());
-			nextPage.setLength(0);
-			parseItems(items, listingResultsJson, nextPage);
+			query.clearNextPage();
+			parseItems(items, listingResultsJson, query.getNextPage());
+			Log.i(TAG, "Next page token parsed: " + query.getNextPage());
 		} else {
 			Log.e(TAG, "Couldn't get any data from the db or url");
 		}

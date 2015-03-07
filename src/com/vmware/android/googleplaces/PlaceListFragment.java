@@ -1,7 +1,10 @@
 package com.vmware.android.googleplaces;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -11,6 +14,8 @@ import android.annotation.TargetApi;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -53,8 +58,12 @@ import com.vmware.android.googleplaces.R;
  * TODO:
  * Features:
  * d- add search text box and search button on initial screen
- * - add location search box on initial screen
- * - store search results in a database on each search for persistence
+ * d- add location search box on initial screen
+ *   - Clientside geocoding:
+ *     http://developer.android.com/training/location/display-address.html
+ *   - Server side geocoding: http://developer.android.com/training/location/display-address.html
+ * - add unit tests
+ * d- store search results in a database on each search for persistence
  * d- add continuous scrolling for listing results
  * d- add caching for listing results
  * - Tie Done button on keyboard to search initiation
@@ -83,14 +92,15 @@ public class PlaceListFragment extends ListFragment {
  
     private Button mPlaceQueryButton;
 	private EditText mQueryEditText;
-    private Button mCreateCrimeButton;
+	private EditText mQueryLocationEditText;
 	private TextView mEmptyListTextView;
 
     // Hashmap for ListView
     private ArrayList<HashMap<String, String>> mPlaceList;
     private PlaceDatabaseHelper mDbHelper;
-    private StringBuilder mNextPage;
-    private String mQueryText;
+    private SearchQuery mCurrentQuery;
+    //private StringBuilder mNextPage;
+    //private String mQueryText;
 	private int mPages;
 	private int mTotalCount = 0;
 
@@ -109,8 +119,7 @@ public class PlaceListFragment extends ListFragment {
 		// If you go to place details and come back through the ancestral navigation on the menu bar server is hit again. I don't have a way to prevent this.
 		//   actually I do through android:launchMode="singleTask" in the manifest file
 		setRetainInstance(true);
-		mNextPage = new StringBuilder();
-		mQueryText = "pizza";
+		mCurrentQuery = new SearchQuery("", "");
 		mTotalCount = 0;
 		// Best is to have a single instance of this database helper object for the application.
 		// I might want to convert PlaceDatabaseHelper class to singleton in the future.
@@ -118,7 +127,7 @@ public class PlaceListFragment extends ListFragment {
 		if (mPlaceList == null){
 			mPlaceList = new ArrayList<HashMap<String, String>>();
 			// Calling async task to get json
-	        new GetPlaces().execute(new StringBuilder(mQueryText), mNextPage);		
+	        //new GetPlaces().execute(mCurrentQuery);		
 		}
 	}
 
@@ -131,9 +140,15 @@ public class PlaceListFragment extends ListFragment {
 
 		mQueryEditText = (EditText) v.findViewById(R.id.place_query_edit_text);
 		if (!mQueryEditText.getText().toString().trim().isEmpty()){
-			mQueryText = mQueryEditText.getText().toString().trim();
+			mCurrentQuery.setQueryText(mQueryEditText.getText().toString().trim());
 		}
-        mPlaceQueryButton = (Button)v.findViewById(R.id.place_query_button);
+
+		mQueryLocationEditText = (EditText) v.findViewById(R.id.place_location_edit_text);
+		if (!mQueryLocationEditText.getText().toString().trim().isEmpty()){
+			mCurrentQuery.setQueryLocation(mQueryLocationEditText.getText().toString().trim());
+		}
+
+		mPlaceQueryButton = (Button)v.findViewById(R.id.place_query_button);
         mPlaceQueryButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -146,14 +161,51 @@ public class PlaceListFragment extends ListFragment {
             	// Get rid of the keyboard
             	InputMethodManager imm = (InputMethodManager)getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
            		imm.hideSoftInputFromWindow(mQueryEditText.getWindowToken(), 0);
-           		// 1/3 Get search text
-    			mQueryText = mQueryEditText.getText().toString().trim();
-    			// 2/3 Clear total item count you are keeping track of
+           		// 1/3 Get search text and location
+           		mCurrentQuery.setQueryText(mQueryEditText.getText().toString().trim());
+           		mCurrentQuery.setQueryLocation(mQueryLocationEditText.getText().toString().trim());
+           		// 2/3 Clear total item count you are keeping track of
     			mTotalCount = 0;
     			// 3/3 Clear nextPage value
-    			mNextPage.setLength(0);
+    			mCurrentQuery.clearNextPage();
+    			
+    			// Try to geocode the location
+    			List<Address> addresses = null;
+    			Geocoder geocoder = new Geocoder(getActivity(), Locale.getDefault());
+    			String errorMessage = "";
+    			
+    			if (mCurrentQuery.getQueryLocation() == null || mCurrentQuery.getQueryLocation().equals("") ) {
+    	            errorMessage = getString(R.string.no_location_data_provided);
+    	            showToast(errorMessage);
+    	            return;
+    			}
+    			
+    			try{
+    				addresses = geocoder.getFromLocationName(mCurrentQuery.getQueryLocation(), 1);
+    			} catch (IOException ioException) {
+    				errorMessage = getString(R.string.service_not_available);
+    				Log.e(TAG, "Geocoder Service not available, ioException.");
+    			}
+    			
+    			if (errorMessage!=""){
+    				showToast(errorMessage);
+    				return;
+    			}
+    			
+    			// Handle case where no address was found.
+    	        if (addresses == null || addresses.size() == 0) {
+    	        	errorMessage = getString(R.string.no_address_found);
+    	            Log.e(TAG, "No matching address found.");
+    				showToast(errorMessage);
+    				return;
+    	        } else {
+    	            Address address = addresses.get(0);
+    	            mCurrentQuery.setLat(address.getLatitude());
+    	            mCurrentQuery.setLon(address.getLongitude());
+    	            Log.i(TAG, "Lat, Lon: " + mCurrentQuery.getLat() + ", " + mCurrentQuery.getLon());
+    	        }
             	// Calling async task to get json
-    	        new GetPlaces().execute(new StringBuilder(mQueryText), mNextPage);		
+    	        new GetPlaces().execute(mCurrentQuery);		
             }
         });
         
@@ -171,8 +223,8 @@ public class PlaceListFragment extends ListFragment {
 
 					mTotalCount = totalItemCount;
 					
-					if (!mNextPage.toString().trim().isEmpty()){
-						new GetPlaces().execute(new StringBuilder(mQueryText), mNextPage);
+					if (!mCurrentQuery.getNextPage().toString().trim().isEmpty()){
+						new GetPlaces().execute(mCurrentQuery);
 					}
 					else{
 				        String noNextPageText = getActivity().getString(R.string.no_next_page_text) + mTotalCount;
@@ -181,7 +233,7 @@ public class PlaceListFragment extends ListFragment {
 					
 					Log.e(TAG, "firstVisibleItem: " + firstVisibleItem + " visibleItemCount: " + visibleItemCount +
 							" totalItemCount: " + totalItemCount);
-					Log.e(TAG, "Scrolled: current_page: " + mNextPage);
+					Log.e(TAG, "Scrolled: current_page: " + mCurrentQuery.getNextPage());
 				}
 			}
 
@@ -193,11 +245,14 @@ public class PlaceListFragment extends ListFragment {
         
 		mEmptyListTextView = (TextView) v.findViewById(R.id.empty_list_text_view);
         mEmptyListTextView.setText(R.string.empty_list_text);
-        mCreateCrimeButton = (Button)v.findViewById(R.id.create_crime_button);
 
         return v;
 	}
 
+    protected void showToast(String text) {
+        Toast.makeText(getActivity(), text, Toast.LENGTH_SHORT).show();
+    }
+    
 	private class ContactAdapter extends ArrayAdapter<HashMap<String, String>> {
 
 		public ContactAdapter(ArrayList<HashMap<String, String>> contacts) {
@@ -229,7 +284,7 @@ public class PlaceListFragment extends ListFragment {
 	/**
      * Async task class to get places json by making HTTP call
      * */
-    private class GetPlaces extends AsyncTask<StringBuilder, Void, ArrayList<HashMap<String, String>>> {
+    private class GetPlaces extends AsyncTask<SearchQuery, Void, ArrayList<HashMap<String, String>>> {
  
         @Override
         protected void onPreExecute() {
@@ -243,8 +298,8 @@ public class PlaceListFragment extends ListFragment {
         }
  
         @Override
-        protected ArrayList<HashMap<String, String>> doInBackground(StringBuilder... arg0) {
-            return new PlaceFetcher().apacheDownloadPlaceItems(arg0[0].toString(), arg0[1], getActivity());
+        protected ArrayList<HashMap<String, String>> doInBackground(SearchQuery... arg0) {
+            return new PlaceFetcher().apacheDownloadPlaceItems(arg0[0], getActivity());
         }
  
         @Override
